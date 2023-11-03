@@ -9,6 +9,7 @@ import {
   instanceofZodTypeCoercible,
   instanceofZodTypeLikeString,
   instanceofZodTypeLikeVoid,
+  instanceofZodTypeLikeVoidOrObject,
   instanceofZodTypeObject,
   instanceofZodTypeOptional,
   unwrapZodType,
@@ -34,10 +35,24 @@ export const getParameterObjects = (
   }
 
   const isRequired = !schema.isOptional();
-  const unwrappedSchema = unwrapZodType(schema, true);
+  let unwrappedSchema = unwrapZodType(schema, true);
 
   if (pathParameters.length === 0 && instanceofZodTypeLikeVoid(unwrappedSchema)) {
     return undefined;
+  }
+
+  if (instanceofZodTypeLikeVoidOrObject(unwrappedSchema)) {
+    const objSchema =
+      unwrappedSchema._def.options.find<z.ZodObject<z.ZodRawShape>>(instanceofZodTypeObject);
+
+    if (!objSchema) {
+      throw new TRPCError({
+        message: 'Input parser must be a ZodObject',
+        code: 'INTERNAL_SERVER_ERROR',
+      });
+    }
+
+    unwrappedSchema = objSchema;
   }
 
   if (!instanceofZodTypeObject(unwrappedSchema)) {
@@ -127,10 +142,24 @@ export const getRequestBodyObject = (
   }
 
   const isRequired = !schema.isOptional();
-  const unwrappedSchema = unwrapZodType(schema, true);
+  let unwrappedSchema = unwrapZodType(schema, true);
 
   if (pathParameters.length === 0 && instanceofZodTypeLikeVoid(unwrappedSchema)) {
     return undefined;
+  }
+
+  if (instanceofZodTypeLikeVoidOrObject(unwrappedSchema)) {
+    const objSchema =
+      unwrappedSchema._def.options.find<z.ZodObject<z.ZodRawShape>>(instanceofZodTypeObject);
+
+    if (!objSchema) {
+      throw new TRPCError({
+        message: 'Input parser must be a ZodObject',
+        code: 'INTERNAL_SERVER_ERROR',
+      });
+    }
+
+    unwrappedSchema = objSchema;
   }
 
   if (!instanceofZodTypeObject(unwrappedSchema)) {
@@ -189,7 +218,7 @@ export const errorResponseObject: OpenAPIV3.ResponseObject = {
 export const getResponsesObject = (
   schema: unknown,
   example: Record<string, any> | undefined,
-  headers: Record<string, OpenAPIV3.HeaderObject | OpenAPIV3.ReferenceObject> | undefined
+  headers: Record<string, OpenAPIV3.HeaderObject | OpenAPIV3.ReferenceObject> | undefined,
 ): OpenAPIV3.ResponsesObject => {
   if (!instanceofZodType(schema)) {
     throw new TRPCError({

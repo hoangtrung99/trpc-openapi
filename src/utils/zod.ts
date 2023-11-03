@@ -7,7 +7,7 @@ export const instanceofZodType = (type: any): type is z.ZodTypeAny => {
 export const instanceofZodTypeKind = <Z extends z.ZodFirstPartyTypeKind>(
   type: z.ZodTypeAny,
   zodTypeKind: Z,
-): type is InstanceType<typeof z[Z]> => {
+): type is InstanceType<(typeof z)[Z]> => {
   return type?._def?.typeName === zodTypeKind;
 };
 
@@ -31,8 +31,25 @@ export const instanceofZodTypeLikeVoid = (type: z.ZodTypeAny): type is ZodTypeLi
   );
 };
 
+export type ZodTypeLikeVoidOrObject = z.ZodUnion<[ZodTypeLikeVoid, z.ZodObject<z.ZodRawShape>]>;
+
+export const instanceofZodTypeLikeVoidOrObject = (
+  type: z.ZodTypeAny,
+): type is ZodTypeLikeVoidOrObject => {
+  if (!instanceofZodTypeKind(type, z.ZodFirstPartyTypeKind.ZodUnion)) {
+    return false;
+  }
+
+  return type._def.options.every(
+    (option) => instanceofZodTypeLikeVoid(option) || instanceofZodTypeObject(option),
+  );
+};
+
 export const unwrapZodType = (type: z.ZodTypeAny, unwrapPreprocess: boolean): z.ZodTypeAny => {
   if (instanceofZodTypeKind(type, z.ZodFirstPartyTypeKind.ZodOptional)) {
+    return unwrapZodType(type.unwrap(), unwrapPreprocess);
+  }
+  if (instanceofZodTypeKind(type, z.ZodFirstPartyTypeKind.ZodNullable)) {
     return unwrapZodType(type.unwrap(), unwrapPreprocess);
   }
   if (instanceofZodTypeKind(type, z.ZodFirstPartyTypeKind.ZodDefault)) {

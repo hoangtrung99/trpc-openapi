@@ -167,7 +167,11 @@ const usersRouter = t.router({
         summary: 'Read all users',
       },
     })
-    .input(z.void())
+    .input(
+      z.object({
+        page: z.number().int(),
+      }),
+    )
     .output(
       z.object({
         users: z.array(
